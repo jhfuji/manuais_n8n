@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Fluxo n8n - Consulta de Dados PDV</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0d1117; background-image: linear-gradient(135deg, #0d1117 0%, #172031 100%); color: #c9d1d9; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        header { text-align: center; padding: 15px 0; flex-shrink: 0; background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        h1 { font-size: 2.1rem; font-weight: 600; background: linear-gradient(to right, #58a6ff, #3291ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { font-size: 1.0rem; color: #8b949e; max-width: 800px; margin: 0 auto; }
+        
+        .content-wrapper { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        
+        /* --- AJUSTE FINO: Layout do contêiner do fluxo --- */
+        .flow-container {
+            position: relative;
+            flex-grow: 1; /* Ocupa todo o espaço vertical disponível */
+            display: flex;
+            padding: 20px 20px 25px 20px; /* Padding ajustado */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .flow-grid {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #0d1117;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 25px 25px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            overflow: hidden;
+            cursor: grab;
+        }
+        .flow-grid:active { cursor: grabbing; }
+
+        .flow-content { position: relative; width: 1px; height: 1px; transform-origin: 0 0; transition: transform 0.1s ease-out; }
+        .node { position: absolute; width: 160px; padding: 10px; background: #161b22; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); cursor: pointer; transition: all 0.2s ease-out; text-align: center; border: 1px solid #30363d; z-index: 10; }
+        .node:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(88, 166, 255, 0.2); border-color: #58a6ff; }
+        .node.selected { border-color: #58a6ff; box-shadow: 0 0 15px rgba(88, 166, 255, 0.5); }
+        .node-title { font-weight: 600; color: #c9d1d9; font-size: 14px; }
+        .node-type { font-size: 11px; color: #8b949e; }
+        
+        .reset-view-btn { position: absolute; bottom: 40px; right: 35px; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; cursor: pointer; z-index: 100; transition: all 0.2s ease; }
+        .reset-view-btn:hover { background-color: #30363d; border-color: #58a6ff; }
+        
+        .description-container {
+            padding: 20px;
+            flex-shrink: 0; /* Não encolhe */
+            background-color: #0d1117;
+        }
+        .description-title { text-align: center; margin-bottom: 15px; font-size: 1.4rem; font-weight: 500; color: #58a6ff; }
+        .description-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; min-height: 50px; overflow-y: auto; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4); }
+        .description-content h3 { color: #58a6ff; margin-bottom: 8px; font-size: 1.2rem; font-weight: 600; }
+        .description-content p { font-size: 1rem; line-height: 1.5; color: #c9d1d9; }
+        .description-box::-webkit-scrollbar { width: 8px; }
+        .description-box::-webkit-scrollbar-track { background: #0d1117; }
+        .description-box::-webkit-scrollbar-thumb { background-color: #30363d; border-radius: 4px; }
+        .description-box::-webkit-scrollbar-thumb:hover { background-color: #58a6ff; }
+        
+        .instructions { text-align: center; padding: 10px; font-size: 0.85rem; flex-shrink: 0; background: rgba(0, 0, 0, 0.2); color: #6e7681; border-top: 1px solid #30363d; }
+        .connection-path { stroke: rgba(88, 166, 255, 0.7); stroke-width: 2; fill: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Visualizador de Fluxo n8n - Consulta de Dados PDV</h1><p class="subtitle">Clique em cada nó para entender o processo de consulta e transformação de dados do Protheus.</p></header>
+        <div class="content-wrapper">
+            <div class="flow-container">
+                <div class="flow-grid" id="flow-grid">
+                    <div class="flow-content" id="flow-content">
+                        <svg id="svg-connections" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index: 5; overflow: visible;"></svg>
+                    </div>
+                </div>
+                <button class="reset-view-btn" id="reset-view-btn">Redefinir Visualização</button>
+            </div>
+            <div class="description-container">
+                <h2 class="description-title">Descrição do Nó Selecionado</h2>
+                <div class="description-box" id="description-box"><div id="description-content"><p>Selecione um nó no fluxo acima para ver os detalhes aqui.</p></div></div>
+            </div>
+        </div>
+        <div class="instructions">Use a roda do mouse para dar zoom e clique e arraste para mover o fluxo.</div>
+    </div>
+
+    <script>
+        const nodeData = [
+             { id: "3a69e55e-67c7-4928-bde2-dfa06ba38fe3", name: "Start", type: "Execute Workflow Trigger", position: [-2720, 620], description: "Ponto de partida do workflow, acionado para iniciar o processo de consulta de dados." }, { id: "06ad712b-6692-4233-a5bb-65f9d45ff5f8", name: "Inicio - Transformação PDV", type: "Code", position: [-2500, 620], description: "Nó de código que recebe os dados iniciais, possivelmente para prepará-los (como validar parâmetros) antes do roteamento da consulta." }, { id: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", name: "Switch", type: "Switch", position: [-2200, 560], description: "Roteia o fluxo com base no tipo de consulta solicitada (grupo, subgrupo, marca, etc.), direcionando para o nó 'Set' correspondente que prepara os parâmetros da query." }, { id: "ac13396f-075d-474b-a4df-b150ae673a63", name: "Grupo - SBM", type: "Set", position: [-1920, 220], description: "Configura os parâmetros específicos (tabela SBM, campos, etc.) para a consulta de 'Grupo'." }, { id: "00a87a39-e3cf-4a69-9fad-d97a84bd8284", name: "Subgrupo - ZAE", type: "Set", position: [-1920, 360], description: "Configura os parâmetros específicos (tabela ZAE, campos, etc.) para a consulta de 'Subgrupo'." }, { id: "f2da0b03-1372-4cf1-ae8b-b801f926a2d6", name: "Linha - ZA9", type: "Set", position: [-1920, 500], description: "Configura os parâmetros específicos (tabela ZA9, campos, etc.) para a consulta de 'Linha'." }, { id: "2f216a10-4880-4c8c-9b6f-89b3e993758f", name: "Marca - ZAF", type: "Set", position: [-1920, 640], description: "Configura os parâmetros específicos (tabela ZAF, campos, etc.) para a consulta de 'Marca'." }, { id: "b060a699-59a5-4f48-920c-6df9fd98c7b2", name: "Modelo - ZAG", type: "Set", position: [-1920, 800], description: "Configura os parâmetros específicos (tabela ZAG, campos, etc.) para a consulta de 'Modelo'." }, { id: "c58d4f71-44cb-436a-868c-b9075a490249", name: "Produto - Saldo SB1,SB2", type: "Set", position: [-1920, 960], description: "Configura os parâmetros para uma consulta mais complexa que une as tabelas SB1 e SB2 para obter produtos e seus saldos em estoque." }, { id: "9e37c251-25ca-4d43-8674-55b213fc2a04", name: "GenericQuery", type: "HTTP Request", position: [-1600, 640], description: "Executa a requisição HTTP para a API Protheus (genericQuery) para buscar os dados. Está configurado para continuar em caso de erro, ativando a rota de fallback." }, { id: "32a11309-4950-44e9-9106-483ef54617e1", name: "Se Falhar Then SQL", type: "If", position: [-1280, 680], description: "Verifica se a requisição HTTP anterior falhou (ex: erro 500). Se sim, o fluxo é direcionado para uma consulta SQL direta como fallback. Caso contrário, o erro é tratado." }, { id: "ce81d9a4-a661-4403-9be0-eaa2537603ff", name: "Faz Select", type: "Microsoft SQL", position: [-1120, 600], description: "Executa uma consulta SQL direta no banco de dados como uma alternativa à API, usando a query preparada anteriormente. Também possui tratamento de erro." }, { id: "de72c1b8-480b-426e-9d44-dca7cfd1700c", name: "Existe Items ?", type: "If", position: [-880, 500], description: "Verifica se a consulta (seja via API ou SQL) retornou algum item. Se sim, prossegue para o tratamento dos dados; se não, retorna uma resposta vazia." }, { id: "4763da47-b23e-484a-9f89-06b79350e34f", name: "Split Out", type: "Split Out", position: [-620, 440], description: "Separa a lista de itens retornados pela consulta em itens individuais, para que cada um seja processado separadamente no restante do fluxo." }, { id: "67aa650b-b06e-4179-8d7f-d927ba16d472", name: "Retorna Vazio", type: "Code", position: [-600, 720], description: "Se a consulta não retornou itens, este nó formata uma resposta JSON padrão indicando que não há resultados, mas com sucesso (status 200)." }, { id: "15570697-7cbe-438a-83ae-462bdf83aada", name: "Trata Erros", type: "Code", position: [-600, 900], description: "Centraliza o tratamento de falhas. Formata as mensagens de erro (seja da API ou do SQL) em um padrão de resposta JSON consistente para o consumidor do serviço." }, { id: "870406cb-4380-48d6-8589-783d2d8c1087", name: "Switch1", type: "Switch", position: [-440, 440], description: "Após os itens serem separados, este Switch os roteia para o nó de mapeamento correto, com base no tipo de entidade que foi consultada inicialmente." }, { id: "d7355382-65b3-4ac0-adff-4f239f5afead", name: "Grupo - SBM1", type: "Set", position: [-120, 40], description: "Mapeia os campos brutos do item 'Grupo' (ex: bm_grupo, bm_desc) para um formato final padronizado (ex: cd_grupo, nm_grupo)." }, { id: "6e418e83-86c7-4b08-8388-ce0eb5d0f7a3", name: "Subgrupo - ZAE1", type: "Set", position: [-120, 220], description: "Mapeia os campos brutos do item 'Subgrupo' para um formato final padronizado." }, { id: "13d43ca7-2ebc-4048-8a06-5a089e172641", name: "Linha - ZA", type: "Set", position: [-120, 400], description: "Mapeia os campos brutos do item 'Linha' para um formato final padronizado." }, { id: "6418d9b9-cd15-43e7-b253-3314087cd6a4", name: "Marca - ZAF1", type: "Set", position: [-120, 600], description: "Mapeia os campos brutos do item 'Marca' para um formato final padronizado." }, { id: "3d6be2a2-1b1b-4cfe-adfd-7eba5f168614", name: "Modelo - ZAG1", type: "Set", position: [-120, 780], description: "Mapeia os campos brutos do item 'Modelo' para um formato final padronizado." }, { id: "04fcef1c-1410-43f3-a39b-c31ac938d663", name: "PDV MAP PROD-SALDO", type: "Set", position: [-120, 980], description: "Mapeia os campos brutos do item 'Produto com Saldo' para o formato final esperado pela aplicação PDV, calculando o estoque disponível." }
+        ];
+        const connectionData = [
+            { from: "3a69e55e-67c7-4928-bde2-dfa06ba38fe3", to: "06ad712b-6692-4233-a5bb-65f9d45ff5f8" }, { from: "06ad712b-6692-4233-a5bb-65f9d45ff5f8", to: "0bdfcc92-eb7a-470f-81c8-a39090b48b37" }, { from: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", to: "ac13396f-075d-474b-a4df-b150ae673a63" }, { from: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", to: "00a87a39-e3cf-4a69-9fad-d97a84bd8284" }, { from: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", to: "f2da0b03-1372-4cf1-ae8b-b801f926a2d6" }, { from: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", to: "2f216a10-4880-4c8c-9b6f-89b3e993758f" }, { from: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", to: "b060a699-59a5-4f48-920c-6df9fd98c7b2" }, { from: "0bdfcc92-eb7a-470f-81c8-a39090b48b37", to: "c58d4f71-44cb-436a-868c-b9075a490249" }, { from: "ac13396f-075d-474b-a4df-b150ae673a63", to: "9e37c251-25ca-4d43-8674-55b213fc2a04" }, { from: "00a87a39-e3cf-4a69-9fad-d97a84bd8284", to: "9e37c251-25ca-4d43-8674-55b213fc2a04" }, { from: "f2da0b03-1372-4cf1-ae8b-b801f926a2d6", to: "9e37c251-25ca-4d43-8674-55b213fc2a04" }, { from: "2f216a10-4880-4c8c-9b6f-89b3e993758f", to: "9e37c251-25ca-4d43-8674-55b213fc2a04" }, { from: "b060a699-59a5-4f48-920c-6df9fd98c7b2", to: "9e37c251-25ca-4d43-8674-55b213fc2a04" }, { from: "c58d4f71-44cb-436a-868c-b9075a490249", to: "9e37c251-25ca-4d43-8674-55b213fc2a04" }, { from: "9e37c251-25ca-4d43-8674-55b213fc2a04", to: "de72c1b8-480b-426e-9d44-dca7cfd1700c", output: "main" }, { from: "9e37c251-25ca-4d43-8674-55b213fc2a04", to: "32a11309-4950-44e9-9106-483ef54617e1", output: "error" }, { from: "de72c1b8-480b-426e-9d44-dca7cfd1700c", to: "4763da47-b23e-484a-9f89-06b79350e34f", output: "true" }, { from: "de72c1b8-480b-426e-9d44-dca7cfd1700c", to: "67aa650b-b06e-4179-8d7f-d927ba16d472", output: "false" }, { from: "32a11309-4950-44e9-9106-483ef54617e1", to: "ce81d9a4-a661-4403-9be0-eaa2537603ff", output: "true" }, { from: "32a11309-4950-44e9-9106-483ef54617e1", to: "15570697-7cbe-438a-83ae-462bdf83aada", output: "false" }, { from: "ce81d9a4-a661-4403-9be0-eaa2537603ff", to: "de72c1b8-480b-426e-9d44-dca7cfd1700c", output: "main" }, { from: "ce81d9a4-a661-4403-9be0-eaa2537603ff", to: "15570697-7cbe-438a-83ae-462bdf83aada", output: "error" }, { from: "4763da47-b23e-484a-9f89-06b79350e34f", to: "870406cb-4380-48d6-8589-783d2d8c1087" }, { from: "870406cb-4380-48d6-8589-783d2d8c1087", to: "d7355382-65b3-4ac0-adff-4f239f5afead" }, { from: "870406cb-4380-48d6-8589-783d2d8c1087", to: "6e418e83-86c7-4b08-8388-ce0eb5d0f7a3" }, { from: "870406cb-4380-48d6-8589-783d2d8c1087", to: "13d43ca7-2ebc-4048-8a06-5a089e172641" }, { from: "870406cb-4380-48d6-8589-783d2d8c1087", to: "6418d9b9-cd15-43e7-b253-3314087cd6a4" }, { from: "870406cb-4380-48d6-8589-783d2d8c1087", to: "3d6be2a2-1b1b-4cfe-adfd-7eba5f168614" }, { from: "870406cb-4380-48d6-8589-783d2d8c1087", to: "04fcef1c-1410-43f3-a39b-c31ac938d663" },
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const flowGrid = document.getElementById('flow-grid');
+            const flowContent = document.getElementById('flow-content');
+            const svgConnections = document.getElementById('svg-connections');
+            const descriptionContent = document.getElementById('description-content');
+            const resetButton = document.getElementById('reset-view-btn');
+
+            let scale = 1, panX = 0, panY = 0;
+            let initialTransform = { scale: 1, panX: 0, panY: 0 };
+            let isPanning = false, startPan = { x: 0, y: 0 };
+            
+            const { minX, minY } = nodeData.reduce((acc, node) => ({ minX: Math.min(acc.minX, node.position[0]), minY: Math.min(acc.minY, node.position[1]) }), { minX: Infinity, minY: Infinity });
+            nodeData.forEach(node => { node.normX = node.position[0] - minX; node.normY = node.position[1] - minY; });
+
+            function renderNodes() {
+                flowContent.querySelectorAll('.node').forEach(n => n.remove());
+                nodeData.forEach(node => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'node';
+                    nodeEl.style.left = `${node.normX}px`;
+                    nodeEl.style.top = `${node.normY}px`;
+                    nodeEl.dataset.id = node.id;
+                    nodeEl.innerHTML = `<div class="node-title">${node.name}</div><div class="node-type">${node.type}</div>`;
+                    nodeEl.addEventListener('click', () => selectNode(node.id));
+                    flowContent.appendChild(nodeEl);
+                });
+            }
+
+            function renderConnections() {
+                svgConnections.innerHTML = '';
+                connectionData.forEach(conn => {
+                    const fromEl = flowContent.querySelector(`.node[data-id='${conn.from}']`);
+                    const toEl = flowContent.querySelector(`.node[data-id='${conn.to}']`);
+                    if (!fromEl || !toEl) return;
+                    let fromX = fromEl.offsetLeft + fromEl.offsetWidth; let fromY = fromEl.offsetTop + fromEl.offsetHeight / 2;
+                    let toX = toEl.offsetLeft; let toY = toEl.offsetTop + toEl.offsetHeight / 2;
+                    if (conn.output === 'false' || conn.output === 'error') { fromY = fromEl.offsetTop + fromEl.offsetHeight; }
+                    if (conn.output === 'true') { fromY = fromEl.offsetTop; }
+                    const d = `M ${fromX},${fromY} C ${fromX + Math.max(75, Math.abs(toX - fromX) * 0.4)},${fromY} ${toX - Math.max(75, Math.abs(toX - fromX) * 0.4)},${toY} ${toX},${toY}`;
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', d); path.setAttribute('class', 'connection-path');
+                    svgConnections.appendChild(path);
+                });
+            }
+            
+            function fitAndCenter() {
+                const worldWidth = flowContent.scrollWidth;
+                const worldHeight = flowContent.scrollHeight;
+                const viewportWidth = flowGrid.clientWidth;
+                const viewportHeight = flowGrid.clientHeight;
+                if(worldWidth <= 1 || worldHeight <= 1) return;
+                
+                let newScale = (viewportWidth / worldWidth) * 0.95;
+                if (worldHeight * newScale > viewportHeight * 0.95) {
+                    newScale = (viewportHeight / worldHeight) * 0.95;
+                }
+
+                const newPanX = (viewportWidth - worldWidth * newScale) / 2;
+                const newPanY = (viewportHeight - worldHeight * newScale) / 2;
+                initialTransform = { scale: newScale, panX: newPanX, panY: newPanY };
+                resetToInitialView();
+            }
+
+            function resetToInitialView() {
+                scale = initialTransform.scale; panX = initialTransform.panX; panY = initialTransform.panY;
+                applyTransform();
+            }
+
+            function selectNode(nodeId) {
+                const node = nodeData.find(n => n.id === nodeId);
+                if (!node) return;
+                descriptionContent.innerHTML = `<h3>${node.name} (${node.type})</h3><p>${node.description}</p>`;
+                document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+                document.querySelector(`.node[data-id="${nodeId}"]`)?.classList.add('selected');
+            }
+
+            function applyTransform() { flowContent.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
+            
+            flowGrid.addEventListener('wheel', e => {
+                e.preventDefault();
+                const rect = flowGrid.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+                const newScale = e.deltaY < 0 ? scale * 1.1 : scale / 1.1;
+                const clampedScale = Math.max(0.1, Math.min(newScale, 5));
+                panX = mouseX - (mouseX - panX) * (clampedScale / scale);
+                panY = mouseY - (mouseY - panY) * (clampedScale / scale);
+                scale = clampedScale;
+                applyTransform();
+            });
+
+            flowGrid.addEventListener('mousedown', e => { isPanning = true; startPan.x = e.clientX - panX; startPan.y = e.clientY - panY; });
+            flowGrid.addEventListener('mousemove', e => { if (isPanning) { panX = e.clientX - startPan.x; panY = e.clientY - startPan.y; applyTransform(); }});
+            window.addEventListener('mouseup', () => { isPanning = false; });
+            flowGrid.addEventListener('mouseleave', () => { isPanning = false; });
+            resetButton.addEventListener('click', resetToInitialView);
+            window.addEventListener('resize', fitAndCenter);
+            
+            renderNodes();
+            requestAnimationFrame(() => {
+                renderConnections();
+                fitAndCenter();
+                selectNode(nodeData[0].id);
+            });
+        });
+    </script>
+</body>
+</html>
