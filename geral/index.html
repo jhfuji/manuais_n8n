@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial de Fluxo n8n - Responsivo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        header {
+            text-align: center;
+            padding: 15px 0;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.85;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .flow-container {
+            height: 50vh;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .flow-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            color: #4facfe;
+        }
+        
+        .flow-grid {
+            position: relative;
+            height: calc(100% - 60px);
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+        
+        .flow-content {
+            position: relative;
+            width: 2600px;
+            height: 350px;
+            transform-origin: top left;
+            transition: transform 0.3s ease;
+        }
+        
+        .node {
+            position: absolute;
+            width: 160px;
+            padding: 12px;
+            background: linear-gradient(135deg, #2c3e50, #1a2a6c);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 2px solid #3498db;
+            z-index: 10;
+        }
+        
+        .node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(52, 152, 219, 0.5);
+            border-color: #4facfe;
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+        }
+        
+        .node-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #4facfe;
+            font-size: 1rem;
+        }
+        
+        .node-type {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+        
+        .description-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .description-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            color: #4facfe;
+            flex-shrink: 0;
+        }
+        
+        .description-box {
+            background: rgba(20, 30, 48, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            flex: 1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+        
+        .description-content {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        
+        .description-content h3 {
+            color: #4facfe;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .connection {
+            position: absolute;
+            z-index: 1;
+            height: 2px;
+            background: rgba(79, 172, 254, 0.5);
+            transform-origin: 0 0;
+        }
+        
+        .instructions {
+            text-align: center;
+            padding: 12px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .instructions .highlight {
+            background: rgba(79, 172, 254, 0.2);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        
+        /* Ajustes responsivos apenas para mobile */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .flow-container {
+                height: 45vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tutorial do Fluxo n8n</h1>
+            <p class="subtitle">Clique em cada nó do fluxo para ver sua descrição detalhada</p>
+        </header>
+        
+        <div class="content-wrapper">
+            <div class="flow-container">
+                <h2 class="flow-title">Fluxo de Rotas - Geral</h2>
+                <div class="flow-grid" id="flow-grid">
+                    <div class="flow-content" id="flow-content">
+                        <!-- Os nós serão inseridos aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="description-container">
+                <h2 class="description-title">Descrição do Nó Selecionado</h2>
+                <div class="description-box">
+                    <div class="description-content" id="description-content">
+                        <p>Clique em um nó do fluxo acima para ver sua descrição detalhada.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <p>Detalhes sobre o uso deste endpoint está no arquivo collection do postman.</p>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos nós do fluxo
+        const nodes = [
+            {
+                id: "estoque_consulta_geral",
+                name: "Webhook Inicial",
+                type: "Webhook",
+                position: [100, 100],
+                description: "Nó inicial que recebe a requisição HTTP. Configurado para responder a webhooks com autenticação básica. Este é o ponto de entrada do fluxo onde todas as solicitações são recebidas."
+            },
+            {
+                id: "e3120630-5c3f-4f0e-91b9-03d2d1a05edc",
+                name: "Tem app?",
+                type: "IF",
+                position: [300, 100],
+                description: "Verifica se o parâmetro 'app' foi informado no header e se contém um dos valores válidos: 'linx', 'pdv' ou 'crm'. Esta validação é crítica para garantir que o fluxo possa processar corretamente a solicitação."
+            },
+            {
+                id: "96ceda18-00af-4e60-974d-636174614b9d",
+                name: "Informe o \"app\"",
+                type: "RespondToWebhook",
+                position: [300, 250],
+                description: "Responde com erro 400 caso o parâmetro 'app' não tenha sido informado corretamente. A resposta inclui detalhes sobre o erro e sugestões para corrigir o problema."
+            },
+            {
+                id: "6b720ce4-8ab8-495c-a55c-16d869d37d03",
+                name: "Tem WHERE?",
+                type: "IF",
+                position: [500, 100],
+                description: "Verifica se o parâmetro 'where' foi informado na query string da requisição. Esta etapa garante que os filtros necessários para a consulta foram fornecidos antes de continuar o processamento."
+            },
+            {
+                id: "1cbc6383-7ef3-48e4-8295-5c7d2bad7893",
+                name: "Informe o \"where\"",
+                type: "RespondToWebhook",
+                position: [500, 250],
+                description: "Responde com erro 400 caso o parâmetro 'where' não tenha sido informado. A resposta informa claramente o problema e como resolvê-lo."
+            },
+            {
+                id: "4d2d8beb-0ccd-4bdc-aad7-454b54d333ec",
+                name: "informou valor?",
+                type: "IF",
+                position: [700, 100],
+                description: "Verifica se o parâmetro 'valor' foi informado no header e se contém um dos valores válidos. Este passo é essencial para determinar quais dados serão recuperados na consulta."
+            },
+            {
+                id: "f6e430be-a199-422a-b97e-3a97a260c383",
+                name: "informe o \"valor\"",
+                type: "RespondToWebhook",
+                position: [700, 250],
+                description: "Responde com erro 400 caso o parâmetro 'valor' não tenha sido informado corretamente. A mensagem de erro inclui a lista de valores aceitáveis."
+            },
+            {
+                id: "6f524698-2794-45d4-8e64-ab5e81a2abba",
+                name: "Logon app",
+                type: "ExecuteWorkflow",
+                position: [900, 50],
+                description: "Executa um subworkflow para obter as credenciais de login do aplicativo especificado. Esta etapa garante que a autenticação apropriada seja realizada antes de acessar os dados."
+            },
+            {
+                id: "de0cc61e-eaa5-40a0-b968-6db71bfa40c1",
+                name: "Url Base",
+                type: "ExecuteWorkflow",
+                position: [900, 150],
+                description: "Executa um subworkflow para obter a URL base da API que será utilizada. Esta informação é fundamental para construir o endpoint correto para a consulta."
+            },
+            {
+                id: "bcf970a2-2758-43ce-bf6d-eca612b72f03",
+                name: "Merge",
+                type: "Merge",
+                position: [1100, 100],
+                description: "Combina os dados dos workflows executados anteriormente (logon e URL base) em um único conjunto de dados. Esta consolidação permite um processamento mais eficiente nas etapas seguintes."
+            },
+            {
+                id: "5577e76a-14b6-4704-ab0c-00f843763d78",
+                name: "Code",
+                type: "Code",
+                position: [1300, 100],
+                description: "Executa código JavaScript para processar e combinar dados dos headers, incluindo tenantId quando disponível. Este nó permite transformações complexas e manipulação de dados personalizada."
+            },
+            {
+                id: "c744283b-79f7-45e2-a618-9d27bf693de8",
+                name: "App Origem",
+                type: "Switch",
+                position: [1500, 100],
+                description: "Encaminha o fluxo para diferentes caminhos baseado no valor do parâmetro 'app' (pdv, crm ou linx). Esta ramificação permite processamento específico para cada tipo de aplicativo."
+            },
+            {
+                id: "88f172eb-5a62-4f3a-8f31-b7aa9c49f7ba",
+                name: "PDV",
+                type: "ExecuteWorkflow",
+                position: [1700, 50],
+                description: "Executa o subworkflow específico para PDV quando este app é selecionado. Este subworkflow contém a lógica de negócios específica para o PDV."
+            },
+            {
+                id: "7477166b-54c9-4e59-a034-ab7fd464569c",
+                name: "Transformação CRM",
+                type: "Code",
+                position: [1700, 150],
+                description: "Inicia a transformação de dados específica para o CRM utilizando JavaScript. Aqui os dados são formatados e preparados para a resposta final."
+            },
+            {
+                id: "873e2e77-3100-4986-9009-811cfe1318aa",
+                name: "Transformação LINX",
+                type: "Code",
+                position: [1700, 250],
+                description: "Inicia a transformação de dados específica para o LINX utilizando JavaScript. Esta etapa adapta os dados para o formato esperado pelo LINX."
+            },
+            {
+                id: "46e82e5a-f1e1-4488-83be-38b09c4284ef",
+                name: "Se XML ou JSON",
+                type: "IF",
+                position: [1900, 100],
+                description: "Verifica o formato de resposta solicitado (XML ou JSON) através do header 'resposta'. Esta decisão determina como os dados serão formatados na resposta final."
+            },
+            {
+                id: "6a0fa723-6fce-4382-8f1b-221ee15014a6",
+                name: "Aggregate",
+                type: "Aggregate",
+                position: [2100, 50],
+                description: "Agrega todos os dados de itens em um único campo chamado 'estoque'. Esta consolidação é essencial para estruturar a resposta final de forma organizada."
+            },
+            {
+                id: "47bca939-36f7-4b12-9465-df6e6f54bf8d",
+                name: "XML",
+                type: "XML",
+                position: [2300, 50],
+                description: "Converte os dados agregados no formato JSON para XML, definindo 'items' como elemento raiz. Esta transformação prepara os dados para clientes que exigem formato XML."
+            },
+            {
+                id: "7334f720-db7f-4423-91f9-4ba554c7dea5",
+                name: "XML SUCESSO",
+                type: "RespondToWebhook",
+                position: [2500, 50],
+                description: "Responde à requisição webhook com os dados em XML e o cabeçalho Content-Type apropriado. Esta é a resposta final para solicitações que requerem XML."
+            },
+            {
+                id: "57a66ba4-c0dd-4809-875d-83617c43500f",
+                name: "Trata ERROS",
+                type: "Code",
+                position: [2100, 150],
+                description: "Executa código JavaScript para tratar possíveis erros nas respostas da API. Este nó garante que erros sejam capturados e formatados adequadamente."
+            },
+            {
+                id: "6da40d2f-f0b5-46ee-8756-590727a325f4",
+                name: "JSON SUCESSO",
+                type: "RespondToWebhook",
+                position: [2300, 150],
+                description: "Responde à requisição webhook com os dados em formato JSON. Esta é a resposta final para solicitações que requerem JSON."
+            }
+        ];
+
+        // Conexões entre os nós (de → para)
+        const connections = [
+            { from: "estoque_consulta_geral", to: "e3120630-5c3f-4f0e-91b9-03d2d1a05edc" },
+            { from: "e3120630-5c3f-4f0e-91b9-03d2d1a05edc", to: "96ceda18-00af-4e60-974d-636174614b9d" },
+            { from: "e3120630-5c3f-4f0e-91b9-03d2d1a05edc", to: "6b720ce4-8ab8-495c-a55c-16d869d37d03" },
+            { from: "6b720ce4-8ab8-495c-a55c-16d869d37d03", to: "1cbc6383-7ef3-48e4-8295-5c7d2bad7893" },
+            { from: "6b720ce4-8ab8-495c-a55c-16d869d37d03", to: "4d2d8beb-0ccd-4bdc-aad7-454b54d333ec" },
+            { from: "4d2d8beb-0ccd-4bdc-aad7-454b54d333ec", to: "f6e430be-a199-422a-b97e-3a97a260c383" },
+            { from: "4d2d8beb-0ccd-4bdc-aad7-454b54d333ec", to: "6f524698-2794-45d4-8e64-ab5e81a2abba" },
+            { from: "4d2d8beb-0ccd-4bdc-aad7-454b54d333ec", to: "de0cc61e-eaa5-40a0-b968-6db71bfa40c1" },
+            { from: "6f524698-2794-45d4-8e64-ab5e81a2abba", to: "bcf970a2-2758-43ce-bf6d-eca612b72f03" },
+            { from: "de0cc61e-eaa5-40a0-b968-6db71bfa40c1", to: "bcf970a2-2758-43ce-bf6d-eca612b72f03" },
+            { from: "bcf970a2-2758-43ce-bf6d-eca612b72f03", to: "5577e76a-14b6-4704-ab0c-00f843763d78" },
+            { from: "5577e76a-14b6-4704-ab0c-00f843763d78", to: "c744283b-79f7-45e2-a618-9d27bf693de8" },
+            { from: "c744283b-79f7-45e2-a618-9d27bf693de8", to: "88f172eb-5a62-4f3a-8f31-b7aa9c49f7ba" },
+            { from: "c744283b-79f7-45e2-a618-9d27bf693de8", to: "7477166b-54c9-4e59-a034-ab7fd464569c" },
+            { from: "c744283b-79f7-45e2-a618-9d27bf693de8", to: "873e2e77-3100-4986-9009-811cfe1318aa" },
+            { from: "88f172eb-5a62-4f3a-8f31-b7aa9c49f7ba", to: "46e82e5a-f1e1-4488-83be-38b09c4284ef" },
+            { from: "46e82e5a-f1e1-4488-83be-38b09c4284ef", to: "6a0fa723-6fce-4382-8f1b-221ee15014a6" },
+            { from: "46e82e5a-f1e1-4488-83be-38b09c4284ef", to: "57a66ba4-c0dd-4809-875d-83617c43500f" },
+            { from: "6a0fa723-6fce-4382-8f1b-221ee15014a6", to: "47bca939-36f7-4b12-9465-df6e6f54bf8d" },
+            { from: "47bca939-36f7-4b12-9465-df6e6f54bf8d", to: "7334f720-db7f-4423-91f9-4ba554c7dea5" },
+            { from: "57a66ba4-c0dd-4809-875d-83617c43500f", to: "6da40d2f-f0b5-46ee-8756-590727a325f4" }
+        ];
+
+        // Quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', () => {
+            const flowContent = document.getElementById('flow-content');
+            const flowGrid = document.getElementById('flow-grid');
+            const descriptionContent = document.getElementById('description-content');
+            
+            // Renderizar todos os nós
+            function renderNodes() {
+                flowContent.innerHTML = '';
+                
+                // Primeiro renderizar as conexões
+                connections.forEach(conn => {
+                    const fromNode = nodes.find(n => n.id === conn.from);
+                    const toNode = nodes.find(n => n.id === conn.to);
+                    
+                    if (fromNode && toNode) {
+                        const line = document.createElement('div');
+                        line.className = 'connection';
+                        
+                        // Calcular posição da linha
+                        const fromX = fromNode.position[0] + 80;
+                        const fromY = fromNode.position[1] + 35;
+                        const toX = toNode.position[0] + 80;
+                        const toY = toNode.position[1] + 35;
+                        
+                        const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+                        const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+                        
+                        line.style.width = `${length}px`;
+                        line.style.left = `${fromX}px`;
+                        line.style.top = `${fromY}px`;
+                        line.style.transform = `rotate(${angle}deg)`;
+                        
+                        flowContent.appendChild(line);
+                    }
+                });
+                
+                // Renderizar os nós
+                nodes.forEach(node => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'node';
+                    nodeEl.style.left = `${node.position[0]}px`;
+                    nodeEl.style.top = `${node.position[1]}px`;
+                    nodeEl.dataset.id = node.id;
+                    
+                    nodeEl.innerHTML = `
+                        <div class="node-title">${node.name}</div>
+                        <div class="node-type">${node.type}</div>
+                    `;
+                    
+                    nodeEl.addEventListener('click', () => {
+                        selectNode(node.id);
+                    });
+                    
+                    flowContent.appendChild(nodeEl);
+                });
+                
+                // Ajustar escala inicial
+                adjustScale();
+            }
+            
+            // Selecionar um nó
+            function selectNode(nodeId) {
+                const node = nodes.find(n => n.id === nodeId);
+                
+                // Atualizar conteúdo da descrição
+                descriptionContent.innerHTML = `
+                    <h3>${node.name} (${node.type})</h3>
+                    <p>${node.description}</p>
+                `;
+                
+                // Destacar o nó selecionado
+                document.querySelectorAll('.node').forEach(el => {
+                    el.style.borderColor = '#3498db';
+                    el.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                });
+                
+                const selectedEl = document.querySelector(`.node[data-id="${nodeId}"]`);
+                if (selectedEl) {
+                    selectedEl.style.borderColor = '#4facfe';
+                    selectedEl.style.boxShadow = '0 0 15px rgba(79, 172, 254, 0.8)';
+                }
+            }
+            
+            // Ajustar escala do fluxo
+            function adjustScale() {
+                const gridRect = flowGrid.getBoundingClientRect();
+                const contentWidth = 2600; // largura total do conteúdo
+                const contentHeight = 350; // altura total do conteúdo
+                
+                const scaleX = (gridRect.width - 80) / contentWidth; // mais margem horizontal
+                const scaleY = (gridRect.height - 40) / contentHeight;
+                const scale = Math.min(scaleX, scaleY, 1);
+                
+                flowContent.style.transform = `scale(${scale})`;
+                
+                // Centralizar o conteúdo com mais espaço à esquerda
+                const scaledWidth = contentWidth * scale;
+                const scaledHeight = contentHeight * scale;
+                const offsetX = Math.max(20, (gridRect.width - scaledWidth) / 2 - 100); // deslocar para esquerda
+                const offsetY = (gridRect.height - scaledHeight) / 2;
+                
+                flowContent.style.left = `${offsetX}px`;
+                flowContent.style.top = `${offsetY}px`;
+            }
+            
+            // Inicializar
+            renderNodes();
+            
+            // Selecionar o primeiro nó por padrão
+            if (nodes.length > 0) {
+                selectNode(nodes[0].id);
+            }
+            
+            // Ajustar escala ao redimensionar (apenas se necessário)
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(adjustScale, 250);
+            });
+        });
+    </script>
+</body>
+</html>
