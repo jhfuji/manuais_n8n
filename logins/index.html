@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial de Fluxo n8n - Subworkflow de Credenciais</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        header {
+            text-align: center;
+            padding: 15px 0;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.85;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .flow-container {
+            height: 50vh;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .flow-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            color: #4facfe;
+        }
+        
+        .flow-grid {
+            position: relative;
+            height: calc(100% - 60px);
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+        
+        .flow-content {
+            position: relative;
+            width: 1200px;
+            height: 400px;
+            transform-origin: top left;
+            transition: transform 0.3s ease;
+        }
+        
+        .node {
+            position: absolute;
+            width: 180px;
+            padding: 15px;
+            background: linear-gradient(135deg, #2c3e50, #1a2a6c);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 2px solid #3498db;
+            z-index: 10;
+        }
+        
+        .node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(52, 152, 219, 0.5);
+            border-color: #4facfe;
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+        }
+        
+        .node-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #4facfe;
+            font-size: 1rem;
+        }
+        
+        .node-type {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+        
+        .description-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .description-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            color: #4facfe;
+            flex-shrink: 0;
+        }
+        
+        .description-box {
+            background: rgba(20, 30, 48, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            flex: 1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+        
+        .description-content {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        
+        .description-content h3 {
+            color: #4facfe;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .connection {
+            position: absolute;
+            z-index: 1;
+            height: 2px;
+            background: rgba(79, 172, 254, 0.5);
+            transform-origin: 0 0;
+        }
+        
+        .instructions {
+            text-align: center;
+            padding: 12px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .instructions .highlight {
+            background: rgba(79, 172, 254, 0.2);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        
+        /* Ajustes responsivos apenas para mobile */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .flow-container {
+                height: 45vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Subworkflow de Credenciais n8n</h1>
+            <p class="subtitle">Clique em cada nó do fluxo para ver sua descrição detalhada</p>
+        </header>
+        
+        <div class="content-wrapper">
+            <div class="flow-container">
+                <h2 class="flow-title">Fluxo de Obtenção de Credenciais por APP</h2>
+                <div class="flow-grid" id="flow-grid">
+                    <div class="flow-content" id="flow-content">
+                        <!-- Os nós serão inseridos aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="description-container">
+                <h2 class="description-title">Descrição do Nó Selecionado</h2>
+                <div class="description-box">
+                    <div class="description-content" id="description-content">
+                        <p>Clique em um nó do fluxo acima para ver sua descrição detalhada.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <p>Este subworkflow é responsável por obter as credenciais apropriadas baseadas no tipo de aplicativo informado.</p>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos nós do fluxo baseados no JSON fornecido
+        const nodes = [
+            {
+                id: "e39509af-cbf8-4186-b5cc-e9966ffba78f",
+                name: "Início",
+                type: "Manual Trigger",
+                position: [100, 150],
+                description: "Nó de início manual que inicia o subworkflow de obtenção de credenciais. Este é o ponto de entrada quando o workflow principal chama este subworkflow para obter as credenciais de autenticação baseadas no tipo de aplicativo especificado."
+            },
+            {
+                id: "167c902e-5c18-45e0-b781-e47b04e181ad",
+                name: "Rotas APP",
+                type: "Switch",
+                position: [350, 150],
+                description: "Nó Switch que avalia o parâmetro 'app' recebido nos headers e direciona o fluxo para o caminho apropriado. Suporta três rotas: 'pdv', 'crm' e 'linx'. Cada rota tem configurações específicas de credenciais e URLs. O nó verifica exatamente qual aplicativo foi solicitado e encaminha para a configuração correspondente."
+            },
+            {
+                id: "pdv-credentials-node",
+                name: "PDV - Url e Credentials",
+                type: "Set",
+                position: [550, 30],
+                description: "Configura as credenciais específicas para o aplicativo PDV. Define username e password como 'n8n.totvs' para ambos os campos. Este nó é executado quando o parâmetro 'app' for igual a 'pdv'. As credenciais são configuradas de forma similar aos outros aplicativos, preparando-as para serem processadas pelo nó de conversão base64."
+            },
+            {
+                id: "4e1db85b-8970-4c4d-a2b3-afa124842e8e",
+                name: "CRM - Url e Credentials",
+                type: "Set",
+                position: [550, 150],
+                description: "Configura as credenciais específicas para o aplicativo CRM. Define username e password como 'n8n.totvs' para ambos os campos. Este nó é executado quando o parâmetro 'app' for igual a 'crm'. As credenciais são armazenadas em um formato estruturado para serem processadas pelo próximo nó."
+            },
+            {
+                id: "2680d47e-22d0-4f1c-a786-2c007aafcc88",
+                name: "LINX - Url e Credentials",
+                type: "Set",
+                position: [550, 270],
+                description: "Configura as credenciais específicas para o aplicativo LINX. Assim como o CRM, define username e password como 'n8n.totvs'. Este nó é ativado quando o parâmetro 'app' for igual a 'linx'. Prepara as credenciais no formato necessário para autenticação no sistema LINX."
+            },
+            {
+                id: "9aaa8441-0488-4d4f-93ea-dbcae59c1bba",
+                name: "Convert base64",
+                type: "Code",
+                position: [800, 150],
+                description: "Nó de código JavaScript que processa as credenciais recebidas e las converte para o formato de autenticação Basic HTTP. Cria um cabeçalho de Authorization codificando as credenciais em Base64 no formato 'username:password'. Também define o Content-Type como 'application/json'. O resultado é um objeto JSON com os headers prontos para uso nas requisições HTTP subsequentes."
+            }
+        ];
+
+        // Conexões entre os nós baseadas no JSON
+        const connections = [
+            { from: "e39509af-cbf8-4186-b5cc-e9966ffba78f", to: "167c902e-5c18-45e0-b781-e47b04e181ad" },
+            { from: "167c902e-5c18-45e0-b781-e47b04e181ad", to: "pdv-credentials-node" },
+            { from: "167c902e-5c18-45e0-b781-e47b04e181ad", to: "4e1db85b-8970-4c4d-a2b3-afa124842e8e" },
+            { from: "167c902e-5c18-45e0-b781-e47b04e181ad", to: "2680d47e-22d0-4f1c-a786-2c007aafcc88" },
+            { from: "pdv-credentials-node", to: "9aaa8441-0488-4d4f-93ea-dbcae59c1bba" },
+            { from: "4e1db85b-8970-4c4d-a2b3-afa124842e8e", to: "9aaa8441-0488-4d4f-93ea-dbcae59c1bba" },
+            { from: "2680d47e-22d0-4f1c-a786-2c007aafcc88", to: "9aaa8441-0488-4d4f-93ea-dbcae59c1bba" }
+        ];
+
+        // Quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', () => {
+            const flowContent = document.getElementById('flow-content');
+            const flowGrid = document.getElementById('flow-grid');
+            const descriptionContent = document.getElementById('description-content');
+            
+            // Renderizar todos os nós
+            function renderNodes() {
+                flowContent.innerHTML = '';
+                
+                // Primeiro renderizar as conexões
+                connections.forEach(conn => {
+                    const fromNode = nodes.find(n => n.id === conn.from);
+                    const toNode = nodes.find(n => n.id === conn.to);
+                    
+                    if (fromNode && toNode) {
+                        const line = document.createElement('div');
+                        line.className = 'connection';
+                        
+                        // Calcular posição da linha
+                        const fromX = fromNode.position[0] + 90;
+                        const fromY = fromNode.position[1] + 40;
+                        const toX = toNode.position[0] + 90;
+                        const toY = toNode.position[1] + 40;
+                        
+                        const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+                        const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+                        
+                        line.style.width = `${length}px`;
+                        line.style.left = `${fromX}px`;
+                        line.style.top = `${fromY}px`;
+                        line.style.transform = `rotate(${angle}deg)`;
+                        
+                        flowContent.appendChild(line);
+                    }
+                });
+                
+                // Renderizar os nós
+                nodes.forEach(node => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'node';
+                    nodeEl.style.left = `${node.position[0]}px`;
+                    nodeEl.style.top = `${node.position[1]}px`;
+                    nodeEl.dataset.id = node.id;
+                    
+                    nodeEl.innerHTML = `
+                        <div class="node-title">${node.name}</div>
+                        <div class="node-type">${node.type}</div>
+                    `;
+                    
+                    nodeEl.addEventListener('click', () => {
+                        selectNode(node.id);
+                    });
+                    
+                    flowContent.appendChild(nodeEl);
+                });
+                
+                // Ajustar escala inicial
+                adjustScale();
+            }
+            
+            // Selecionar um nó
+            function selectNode(nodeId) {
+                const node = nodes.find(n => n.id === nodeId);
+                
+                // Atualizar conteúdo da descrição
+                descriptionContent.innerHTML = `
+                    <h3>${node.name} (${node.type})</h3>
+                    <p>${node.description}</p>
+                `;
+                
+                // Destacar o nó selecionado
+                document.querySelectorAll('.node').forEach(el => {
+                    el.style.borderColor = '#3498db';
+                    el.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+                });
+                
+                const selectedEl = document.querySelector(`.node[data-id="${nodeId}"]`);
+                if (selectedEl) {
+                    selectedEl.style.borderColor = '#4facfe';
+                    selectedEl.style.boxShadow = '0 0 15px rgba(79, 172, 254, 0.8)';
+                }
+            }
+            
+            // Ajustar escala do fluxo
+            function adjustScale() {
+                const gridRect = flowGrid.getBoundingClientRect();
+                const contentWidth = 1200;
+                const contentHeight = 400;
+                
+                const scaleX = (gridRect.width - 80) / contentWidth;
+                const scaleY = (gridRect.height - 40) / contentHeight;
+                const scale = Math.min(scaleX, scaleY, 1);
+                
+                flowContent.style.transform = `scale(${scale})`;
+                
+                // Centralizar o conteúdo
+                const scaledWidth = contentWidth * scale;
+                const scaledHeight = contentHeight * scale;
+                const offsetX = Math.max(20, (gridRect.width - scaledWidth) / 2);
+                const offsetY = (gridRect.height - scaledHeight) / 2;
+                
+                flowContent.style.left = `${offsetX}px`;
+                flowContent.style.top = `${offsetY}px`;
+            }
+            
+            // Inicializar
+            renderNodes();
+            
+            // Selecionar o primeiro nó por padrão
+            if (nodes.length > 0) {
+                selectNode(nodes[0].id);
+            }
+            
+            // Ajustar escala ao redimensionar
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(adjustScale, 250);
+            });
+        });
+    </script>
+</body>
+</html>
