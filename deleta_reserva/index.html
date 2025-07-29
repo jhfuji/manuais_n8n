@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Fluxo n8n - Deleção de Reserva de Estoque</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0d1117; background-image: linear-gradient(135deg, #0d1117 0%, #172031 100%); color: #c9d1d9; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        header { text-align: center; padding: 15px 0; flex-shrink: 0; background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        h1 { font-size: 2.1rem; font-weight: 600; background: linear-gradient(to right, #58a6ff, #3291ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { font-size: 1.0rem; color: #8b949e; max-width: 800px; margin: 0 auto; }
+        
+        .content-wrapper { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        
+        /* --- AJUSTE FINO: Layout do contêiner do fluxo --- */
+        .flow-container {
+            position: relative;
+            flex-grow: 1; /* Ocupa todo o espaço vertical disponível */
+            display: flex;
+            padding: 20px 20px 25px 20px; /* Padding ajustado */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .flow-grid {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-color: #0d1117;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 25px 25px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            overflow: hidden;
+            cursor: grab;
+        }
+        .flow-grid:active { cursor: grabbing; }
+
+        .flow-content { position: relative; width: 1px; height: 1px; transform-origin: 0 0; transition: transform 0.1s ease-out; }
+        .node { position: absolute; width: 160px; padding: 10px; background: #161b22; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); cursor: pointer; transition: all 0.2s ease-out; text-align: center; border: 1px solid #30363d; z-index: 10; }
+        .node:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(88, 166, 255, 0.2); border-color: #58a6ff; }
+        .node.selected { border-color: #58a6ff; box-shadow: 0 0 15px rgba(88, 166, 255, 0.5); }
+        .node-title { font-weight: 600; color: #c9d1d9; font-size: 14px; }
+        .node-type { font-size: 11px; color: #8b949e; }
+        
+        .reset-view-btn { position: absolute; bottom: 40px; right: 35px; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; cursor: pointer; z-index: 100; transition: all 0.2s ease; }
+        .reset-view-btn:hover { background-color: #30363d; border-color: #58a6ff; }
+        
+        .description-container {
+            padding: 20px;
+            flex-shrink: 0; /* Não encolhe */
+            background-color: #0d1117;
+        }
+        .description-title { text-align: center; margin-bottom: 15px; font-size: 1.4rem; font-weight: 500; color: #58a6ff; }
+        .description-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px 20px; min-height: 50px; overflow-y: auto; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4); }
+        .description-content h3 { color: #58a6ff; margin-bottom: 8px; font-size: 1.2rem; font-weight: 600; }
+        .description-content p { font-size: 1rem; line-height: 1.5; color: #c9d1d9; }
+        .description-box::-webkit-scrollbar { width: 8px; }
+        .description-box::-webkit-scrollbar-track { background: #0d1117; }
+        .description-box::-webkit-scrollbar-thumb { background-color: #30363d; border-radius: 4px; }
+        .description-box::-webkit-scrollbar-thumb:hover { background-color: #58a6ff; }
+        
+        .instructions { text-align: center; padding: 10px; font-size: 0.85rem; flex-shrink: 0; background: rgba(0, 0, 0, 0.2); color: #6e7681; border-top: 1px solid #30363d; }
+        .connection-path { stroke: rgba(88, 166, 255, 0.7); stroke-width: 2; fill: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Visualizador de Fluxo n8n - Deleção de Reserva de Estoque</h1><p class="subtitle">Clique em cada nó para entender o processo de autenticação, validação e exclusão de uma reserva de estoque no Protheus.</p></header>
+        <div class="content-wrapper">
+            <div class="flow-container">
+                <div class="flow-grid" id="flow-grid">
+                    <div class="flow-content" id="flow-content">
+                        <svg id="svg-connections" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index: 5; overflow: visible;"></svg>
+                    </div>
+                </div>
+                <button class="reset-view-btn" id="reset-view-btn">Redefinir Visualização</button>
+            </div>
+            <div class="description-container">
+                <h2 class="description-title">Descrição do Nó Selecionado</h2>
+                <div class="description-box" id="description-box"><div id="description-content"><p>Selecione um nó no fluxo acima para ver os detalhes aqui.</p></div></div>
+            </div>
+        </div>
+        <div class="instructions">Use a roda do mouse para dar zoom e clique e arraste para mover o fluxo.</div>
+    </div>
+
+    <script>
+        const nodeData = [
+            { id: "e4d1a138-6edd-48bd-97b2-fc5264e75b06", name: "estoqueReserva_deleta_geral", type: "Webhook", position: [-760, 800], description: "Ponto de entrada do fluxo (webhook) que é acionado por uma requisição DELETE. Ele espera receber o ID da reserva a ser deletada, o 'app' de origem e o 'tenantId'." },
+            { id: "f5c06425-c584-4062-858e-dd69736232e4", name: "Tem app?", type: "If", position: [-560, 800], description: "Este nó condicional verifica se o parâmetro 'app' foi fornecido na requisição e se é um valor válido (ex: linx, pdv, crm). Garante que a requisição venha de uma fonte conhecida antes de prosseguir." },
+            { id: "4b1c236b-4c80-4bc1-9a2d-18f4bc26dc78", name: "Informe o \"app\"", type: "Respond to Webhook", position: [-400, 960], description: "Se a verificação do 'app' falhar, este nó retorna uma resposta de erro (HTTP 400) ao cliente, informando que o parâmetro 'app' é inválido ou não foi fornecido." },
+            { id: "d1e6193d-7258-4820-a5f7-781e010798ec", name: "Logon app", type: "Execute Workflow", position: [-40, 740], description: "Executa um sub-fluxo reutilizável para obter as credenciais de autenticação (logon) necessárias para se conectar à API do Protheus, com base no 'app' fornecido." },
+            { id: "1a4b8962-cfe3-4a11-b67d-b6404179a7e2", name: "Url Base", type: "Execute Workflow", position: [-40, 920], description: "Executa outro sub-fluxo para obter a URL base do serviço REST do Protheus, garantindo que o ambiente (desenvolvimento/produção) seja o correto." },
+            { id: "1f04a84c-b018-4136-a631-c019b832570b", name: "Merge", type: "Merge", position: [200, 820], description: "Combina os resultados dos dois sub-fluxos. Ele junta os dados de autenticação ('Logon app') e a URL base ('Url Base') em um único conjunto de dados para ser usado nas etapas seguintes." },
+            { id: "0c3903d4-0bdb-46b7-80a1-4735438c2ced", name: "Code", type: "Code", position: [380, 820], description: "Prepara os dados para a requisição final. Ele junta as credenciais, a URL e os dados do webhook, e crucialmente, adiciona o 'tenantId' da chamada original aos cabeçalhos de autenticação que serão enviados ao Protheus." },
+            { id: "663b6415-159a-44d0-a6bd-56b58330d4a3", name: "HTTP Request", type: "HTTP Request", position: [600, 820], description: "Realiza a chamada final à API do Protheus, enviando uma requisição DELETE para o endpoint de exclusão de reserva. Está configurado para continuar o fluxo mesmo se ocorrer um erro, direcionando para a rota de tratamento de falhas." },
+            { id: "f172611c-a5c0-400a-bafa-e34d1165d73b", name: "Respond to Webhook", type: "Respond to Webhook", position: [900, 800], description: "Se a requisição HTTP for bem-sucedida, este nó envia a resposta de sucesso do Protheus de volta para o cliente que iniciou o fluxo." },
+            { id: "f5590a0b-c365-4847-894d-2996ec1e3d76", name: "Code2", type: "Code", position: [920, 980], description: "Primeiro passo no tratamento de erros. Ele recebe a resposta de falha do 'HTTP Request', analisa o objeto de erro para extrair a mensagem e o status, e formata uma resposta de erro padronizada." },
+            { id: "898e41e9-cd84-4e85-9511-1d7fbea797ee", name: "Respond Error", type: "Respond to Webhook", position: [1080, 980], description: "Envia a resposta de erro, formatada pelo nó 'Code2', de volta para o cliente. Ele utiliza o código de status (ex: 404, 500) que foi extraído do erro original para fornecer uma resposta precisa." }
+        ];
+        const connectionData = [
+            { from: "e4d1a138-6edd-48bd-97b2-fc5264e75b06", to: "f5c06425-c584-4062-858e-dd69736232e4" },
+            { from: "f5c06425-c584-4062-858e-dd69736232e4", to: "d1e6193d-7258-4820-a5f7-781e010798ec", output: "true" },
+            { from: "f5c06425-c584-4062-858e-dd69736232e4", to: "1a4b8962-cfe3-4a11-b67d-b6404179a7e2", output: "true" },
+            { from: "f5c06425-c584-4062-858e-dd69736232e4", to: "4b1c236b-4c80-4bc1-9a2d-18f4bc26dc78", output: "false" },
+            { from: "d1e6193d-7258-4820-a5f7-781e010798ec", to: "1f04a84c-b018-4136-a631-c019b832570b" },
+            { from: "1a4b8962-cfe3-4a11-b67d-b6404179a7e2", to: "1f04a84c-b018-4136-a631-c019b832570b" },
+            { from: "1f04a84c-b018-4136-a631-c019b832570b", to: "0c3903d4-0bdb-46b7-80a1-4735438c2ced" },
+            { from: "0c3903d4-0bdb-46b7-80a1-4735438c2ced", to: "663b6415-159a-44d0-a6bd-56b58330d4a3" },
+            { from: "663b6415-159a-44d0-a6bd-56b58330d4a3", to: "f172611c-a5c0-400a-bafa-e34d1165d73b", output: "success" },
+            { from: "663b6415-159a-44d0-a6bd-56b58330d4a3", to: "f5590a0b-c365-4847-894d-2996ec1e3d76", output: "error" },
+            { from: "f5590a0b-c365-4847-894d-2996ec1e3d76", to: "898e41e9-cd84-4e85-9511-1d7fbea797ee" }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const flowGrid = document.getElementById('flow-grid');
+            const flowContent = document.getElementById('flow-content');
+            const svgConnections = document.getElementById('svg-connections');
+            const descriptionContent = document.getElementById('description-content');
+            const resetButton = document.getElementById('reset-view-btn');
+
+            let scale = 1, panX = 0, panY = 0;
+            let initialTransform = { scale: 1, panX: 0, panY: 0 };
+            let isPanning = false, startPan = { x: 0, y: 0 };
+            
+            const { minX, minY } = nodeData.reduce((acc, node) => ({ minX: Math.min(acc.minX, node.position[0]), minY: Math.min(acc.minY, node.position[1]) }), { minX: Infinity, minY: Infinity });
+            nodeData.forEach(node => { node.normX = node.position[0] - minX; node.normY = node.position[1] - minY; });
+
+            function renderNodes() {
+                flowContent.querySelectorAll('.node').forEach(n => n.remove());
+                nodeData.forEach(node => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'node';
+                    nodeEl.style.left = `${node.normX}px`;
+                    nodeEl.style.top = `${node.normY}px`;
+                    nodeEl.dataset.id = node.id;
+                    nodeEl.innerHTML = `<div class="node-title">${node.name}</div><div class="node-type">${node.type}</div>`;
+                    nodeEl.addEventListener('click', () => selectNode(node.id));
+                    flowContent.appendChild(nodeEl);
+                });
+            }
+
+            function renderConnections() {
+                svgConnections.innerHTML = '';
+                connectionData.forEach(conn => {
+                    const fromEl = flowContent.querySelector(`.node[data-id='${conn.from}']`);
+                    const toEl = flowContent.querySelector(`.node[data-id='${conn.to}']`);
+                    if (!fromEl || !toEl) return;
+                    let fromX = fromEl.offsetLeft + fromEl.offsetWidth; let fromY = fromEl.offsetTop + fromEl.offsetHeight / 2;
+                    let toX = toEl.offsetLeft; let toY = toEl.offsetTop + toEl.offsetHeight / 2;
+                    
+                    // Ajusta a posição Y do ponto de partida da conexão para nós condicionais
+                    const fromNode = fromEl.querySelector('.node-type').innerText.toLowerCase();
+                    if (fromNode.includes('if') || fromNode.includes('http request')) {
+                         if (conn.output === 'false' || conn.output === 'error') {
+                            fromY = fromEl.offsetTop + fromEl.offsetHeight * 0.75;
+                        } else { // true, success, ou padrão
+                            fromY = fromEl.offsetTop + fromEl.offsetHeight * 0.25;
+                        }
+                    }
+
+                    const d = `M ${fromX},${fromY} C ${fromX + Math.max(75, Math.abs(toX - fromX) * 0.4)},${fromY} ${toX - Math.max(75, Math.abs(toX - fromX) * 0.4)},${toY} ${toX},${toY}`;
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', d); path.setAttribute('class', 'connection-path');
+                    svgConnections.appendChild(path);
+                });
+            }
+            
+            function fitAndCenter() {
+                const worldWidth = flowContent.scrollWidth;
+                const worldHeight = flowContent.scrollHeight;
+                const viewportWidth = flowGrid.clientWidth;
+                const viewportHeight = flowGrid.clientHeight;
+                if(worldWidth <= 1 || worldHeight <= 1) return;
+                
+                let newScale = (viewportWidth / worldWidth) * 0.95;
+                if (worldHeight * newScale > viewportHeight * 0.95) {
+                    newScale = (viewportHeight / worldHeight) * 0.95;
+                }
+                newScale = Math.min(newScale, 1.2); // Limita o zoom máximo inicial
+
+                const newPanX = (viewportWidth - worldWidth * newScale) / 2;
+                const newPanY = (viewportHeight - worldHeight * newScale) / 2;
+                initialTransform = { scale: newScale, panX: newPanX, panY: newPanY };
+                resetToInitialView();
+            }
+
+            function resetToInitialView() {
+                scale = initialTransform.scale; panX = initialTransform.panX; panY = initialTransform.panY;
+                applyTransform();
+            }
+
+            function selectNode(nodeId) {
+                const node = nodeData.find(n => n.id === nodeId);
+                if (!node) return;
+                descriptionContent.innerHTML = `<h3>${node.name} (${node.type})</h3><p>${node.description}</p>`;
+                document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+                document.querySelector(`.node[data-id="${nodeId}"]`)?.classList.add('selected');
+            }
+
+            function applyTransform() { flowContent.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`; }
+            
+            flowGrid.addEventListener('wheel', e => {
+                e.preventDefault();
+                const rect = flowGrid.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top;
+                const newScale = e.deltaY < 0 ? scale * 1.1 : scale / 1.1;
+                const clampedScale = Math.max(0.1, Math.min(newScale, 5));
+                panX = mouseX - (mouseX - panX) * (clampedScale / scale);
+                panY = mouseY - (mouseY - panY) * (clampedScale / scale);
+                scale = clampedScale;
+                applyTransform();
+            });
+
+            flowGrid.addEventListener('mousedown', e => { isPanning = true; startPan.x = e.clientX - panX; startPan.y = e.clientY - panY; });
+            flowGrid.addEventListener('mousemove', e => { if (isPanning) { panX = e.clientX - startPan.x; panY = e.clientY - startPan.y; applyTransform(); }});
+            window.addEventListener('mouseup', () => { isPanning = false; });
+            flowGrid.addEventListener('mouseleave', () => { isPanning = false; });
+            resetButton.addEventListener('click', resetToInitialView);
+            window.addEventListener('resize', fitAndCenter);
+            
+            renderNodes();
+            requestAnimationFrame(() => {
+                renderConnections();
+                fitAndCenter();
+                selectNode(nodeData[0].id);
+            });
+        });
+    </script>
+</body>
+</html>
