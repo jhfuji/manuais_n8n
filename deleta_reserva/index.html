@@ -14,12 +14,11 @@
         
         .content-wrapper { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
         
-        /* --- AJUSTE FINO: Layout do contêiner do fluxo --- */
         .flow-container {
             position: relative;
-            flex-grow: 1; /* Ocupa todo o espaço vertical disponível */
+            flex-grow: 1; 
             display: flex;
-            padding: 20px 20px 25px 20px; /* Padding ajustado */
+            padding: 20px 20px 25px 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
@@ -41,7 +40,12 @@
         .node { position: absolute; width: 160px; padding: 10px; background: #161b22; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); cursor: pointer; transition: all 0.2s ease-out; text-align: center; border: 1px solid #30363d; z-index: 10; }
         .node:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(88, 166, 255, 0.2); border-color: #58a6ff; }
         .node.selected { border-color: #58a6ff; box-shadow: 0 0 15px rgba(88, 166, 255, 0.5); }
-        .node-title { font-weight: 600; color: #c9d1d9; font-size: 14px; }
+        .node-title { 
+            font-weight: 600; 
+            color: #c9d1d9; 
+            font-size: 14px; 
+            overflow-wrap: break-word; /* CORREÇÃO: Garante que o texto quebre a linha */
+        }
         .node-type { font-size: 11px; color: #8b949e; }
         
         .reset-view-btn { position: absolute; bottom: 40px; right: 35px; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 12px; border-radius: 6px; cursor: pointer; z-index: 100; transition: all 0.2s ease; }
@@ -49,7 +53,7 @@
         
         .description-container {
             padding: 20px;
-            flex-shrink: 0; /* Não encolhe */
+            flex-shrink: 0;
             background-color: #0d1117;
         }
         .description-title { text-align: center; margin-bottom: 15px; font-size: 1.4rem; font-weight: 500; color: #58a6ff; }
@@ -97,7 +101,7 @@
             { id: "663b6415-159a-44d0-a6bd-56b58330d4a3", name: "HTTP Request", type: "HTTP Request", position: [600, 820], description: "Realiza a chamada final à API do Protheus, enviando uma requisição DELETE para o endpoint de exclusão de reserva. Está configurado para continuar o fluxo mesmo se ocorrer um erro, direcionando para a rota de tratamento de falhas." },
             { id: "f172611c-a5c0-400a-bafa-e34d1165d73b", name: "Respond to Webhook", type: "Respond to Webhook", position: [900, 800], description: "Se a requisição HTTP for bem-sucedida, este nó envia a resposta de sucesso do Protheus de volta para o cliente que iniciou o fluxo." },
             { id: "f5590a0b-c365-4847-894d-2996ec1e3d76", name: "Code2", type: "Code", position: [920, 980], description: "Primeiro passo no tratamento de erros. Ele recebe a resposta de falha do 'HTTP Request', analisa o objeto de erro para extrair a mensagem e o status, e formata uma resposta de erro padronizada." },
-            { id: "898e41e9-cd84-4e85-9511-1d7fbea797ee", name: "Respond Error", type: "Respond to Webhook", position: [1080, 980], description: "Envia a resposta de erro, formatada pelo nó 'Code2', de volta para o cliente. Ele utiliza o código de status (ex: 404, 500) que foi extraído do erro original para fornecer uma resposta precisa." }
+            { id: "898e41e9-cd84-4e85-9511-1d7fbea797ee", name: "Respond Error", type: "Respond to Webhook", position: [1140, 980], description: "Envia a resposta de erro, formatada pelo nó 'Code2', de volta para o cliente. Ele utiliza o código de status (ex: 404, 500) que foi extraído do erro original para fornecer uma resposta precisa." } /* CORREÇÃO: Aumentada a posição X de 1080 para 1140 */
         ];
         const connectionData = [
             { from: "e4d1a138-6edd-48bd-97b2-fc5264e75b06", to: "f5c06425-c584-4062-858e-dd69736232e4" },
@@ -150,12 +154,11 @@
                     let fromX = fromEl.offsetLeft + fromEl.offsetWidth; let fromY = fromEl.offsetTop + fromEl.offsetHeight / 2;
                     let toX = toEl.offsetLeft; let toY = toEl.offsetTop + toEl.offsetHeight / 2;
                     
-                    // Ajusta a posição Y do ponto de partida da conexão para nós condicionais
                     const fromNode = fromEl.querySelector('.node-type').innerText.toLowerCase();
                     if (fromNode.includes('if') || fromNode.includes('http request')) {
                          if (conn.output === 'false' || conn.output === 'error') {
                             fromY = fromEl.offsetTop + fromEl.offsetHeight * 0.75;
-                        } else { // true, success, ou padrão
+                        } else {
                             fromY = fromEl.offsetTop + fromEl.offsetHeight * 0.25;
                         }
                     }
@@ -178,7 +181,7 @@
                 if (worldHeight * newScale > viewportHeight * 0.95) {
                     newScale = (viewportHeight / worldHeight) * 0.95;
                 }
-                newScale = Math.min(newScale, 1.2); // Limita o zoom máximo inicial
+                newScale = Math.min(newScale, 1.2);
 
                 const newPanX = (viewportWidth - worldWidth * newScale) / 2;
                 const newPanY = (viewportHeight - worldHeight * newScale) / 2;
